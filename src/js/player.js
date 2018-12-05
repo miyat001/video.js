@@ -4,6 +4,7 @@
 // Subclasses Component
 import Component from './component.js';
 import NewEl from './newEl.js';
+import UpdateStyle from './updateStyle.js';
 
 import {version} from '../../package.json';
 import document from 'global/document';
@@ -20,7 +21,7 @@ import log, { createLogger } from './utils/log.js';
 import toTitleCase, { titleCaseEquals } from './utils/to-title-case.js';
 import { createTimeRange } from './utils/time-ranges.js';
 import { bufferedPercent } from './utils/buffer.js';
-import * as stylesheet from './utils/stylesheet.js';
+// import * as stylesheet from './utils/stylesheet.js';
 import FullscreenApi from './fullscreen-api.js';
 import MediaError from './media-error.js';
 import safeParseTuple from 'safe-json-parse/tuple';
@@ -597,7 +598,7 @@ class Player extends Component {
    *         The DOM element that gets created.
    */
   createEl() {
-    const n = new NewEl();
+    const newel = new NewEl();
 
     const tag = this.tag;
     let el;
@@ -611,7 +612,7 @@ class Player extends Component {
     }
     const attrs = Dom.getAttributes(tag);
 
-    return n.createEl(this, tag, el, playerElIngest, divEmbed, attrs);
+    return newel.createEl(this, tag, el, playerElIngest, divEmbed, attrs);
   }
 
   /**
@@ -792,83 +793,9 @@ class Player extends Component {
    * @listens Tech#loadedmetadata
    */
   updateStyleEl_() {
-    if (window.VIDEOJS_NO_DYNAMIC_STYLE === true) {
-      const width = typeof this.width_ === 'number' ? this.width_ : this.options_.width;
-      const height = typeof this.height_ === 'number' ? this.height_ : this.options_.height;
-      const techEl = this.tech_ && this.tech_.el();
+    const updatestyleel = new UpdateStyle();
 
-      if (techEl) {
-        if (width >= 0) {
-          techEl.width = width;
-        }
-        if (height >= 0) {
-          techEl.height = height;
-        }
-      }
-
-      return;
-    }
-
-    let width;
-    let height;
-    let aspectRatio;
-    let idClass;
-
-    // The aspect ratio is either used directly or to calculate width and height.
-    if (this.aspectRatio_ !== undefined && this.aspectRatio_ !== 'auto') {
-      // Use any aspectRatio that's been specifically set
-      aspectRatio = this.aspectRatio_;
-    } else if (this.videoWidth() > 0) {
-      // Otherwise try to get the aspect ratio from the video metadata
-      aspectRatio = this.videoWidth() + ':' + this.videoHeight();
-    } else {
-      // Or use a default. The video element's is 2:1, but 16:9 is more common.
-      aspectRatio = '16:9';
-    }
-
-    // Get the ratio as a decimal we can use to calculate dimensions
-    const ratioParts = aspectRatio.split(':');
-    const ratioMultiplier = ratioParts[1] / ratioParts[0];
-
-    if (this.width_ !== undefined) {
-      // Use any width that's been specifically set
-      width = this.width_;
-    } else if (this.height_ !== undefined) {
-      // Or calulate the width from the aspect ratio if a height has been set
-      width = this.height_ / ratioMultiplier;
-    } else {
-      // Or use the video's metadata, or use the video el's default of 300
-      width = this.videoWidth() || 300;
-    }
-
-    if (this.height_ !== undefined) {
-      // Use any height that's been specifically set
-      height = this.height_;
-    } else {
-      // Otherwise calculate the height from the ratio and the width
-      height = width * ratioMultiplier;
-    }
-
-    // Ensure the CSS class is valid by starting with an alpha character
-    if ((/^[^a-zA-Z]/).test(this.id())) {
-      idClass = 'dimensions-' + this.id();
-    } else {
-      idClass = this.id() + '-dimensions';
-    }
-
-    // Ensure the right class is still on the player for the style element
-    this.addClass(idClass);
-
-    stylesheet.setTextContent(this.styleEl_, `
-      .${idClass} {
-        width: ${width}px;
-        height: ${height}px;
-      }
-
-      .${idClass}.vjs-fluid {
-        padding-top: ${ratioMultiplier * 100}%;
-      }
-    `);
+    updatestyleel.updateStyleEl(this);
   }
 
   /**
