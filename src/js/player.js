@@ -5,6 +5,7 @@
 import Component from './component.js';
 import NewEl from './newEl.js';
 import UpdateStyle from './updateStyle.js';
+import ManualAutoplay from './manual-autoplay';
 
 import {version} from '../../package.json';
 import document from 'global/document';
@@ -1123,52 +1124,10 @@ class Player extends Component {
    * found on the autoplay getter at Player#autoplay()
    */
   manualAutoplay_(type) {
-    if (!this.tech_ || typeof type !== 'string') {
-      return;
-    }
+    const manualautoplay = new ManualAutoplay();
 
-    const muted = () => {
-      const previouslyMuted = this.muted();
+    return manualautoplay.manualAutoplay(this, type);
 
-      this.muted(true);
-
-      const playPromise = this.play();
-
-      if (!playPromise || !playPromise.then || !playPromise.catch) {
-        return;
-      }
-
-      return playPromise.catch((e) => {
-        // restore old value of muted on failure
-        this.muted(previouslyMuted);
-      });
-    };
-
-    let promise;
-
-    if (type === 'any') {
-      promise = this.play();
-
-      if (promise && promise.then && promise.catch) {
-        promise.catch(() => {
-          return muted();
-        });
-      }
-    } else if (type === 'muted') {
-      promise = muted();
-    } else {
-      promise = this.play();
-    }
-
-    if (!promise || !promise.then || !promise.catch) {
-      return;
-    }
-
-    return promise.then(() => {
-      this.trigger({type: 'autoplay-success', autoplay: type});
-    }).catch((e) => {
-      this.trigger({type: 'autoplay-failure', autoplay: type});
-    });
   }
 
   /**
