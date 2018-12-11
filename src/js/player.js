@@ -391,17 +391,7 @@ class Player extends Component {
     this.language(this.options_.language);
 
     // Update Supported Languages
-    if (options.languages) {
-      // Normalise player option languages to lowercase
-      const languagesToLower = {};
-
-      Object.getOwnPropertyNames(options.languages).forEach(function(name) {
-        languagesToLower[name.toLowerCase()] = options.languages[name];
-      });
-      this.languages_ = languagesToLower;
-    } else {
-      this.languages_ = Player.prototype.options_.languages;
-    }
+    this.languagetolowerif(options);
 
     // Cache for video property values.
     this.cache_ = {};
@@ -456,17 +446,8 @@ class Player extends Component {
     const playerOptionsCopy = mergeOptions(this.options_);
 
     // Load plugins
-    if (options.plugins) {
-      const plugins = options.plugins;
 
-      Object.keys(plugins).forEach(function(name) {
-        if (typeof this[name] === 'function') {
-          this[name](plugins[name]);
-        } else {
-          throw new Error(`plugin "${name}" does not exist`);
-        }
-      }, this);
-    }
+    this.pluginif(options);
 
     this.options_.playerOptions = playerOptionsCopy;
 
@@ -535,6 +516,34 @@ class Player extends Component {
     this.changingSrc_ = false;
     this.playWaitingForReady_ = false;
     this.playOnLoadstart_ = null;
+  }
+
+  languagetolowerif(options) {
+    if (options.languages) {
+      // Normalise player option languages to lowercase
+      const languagesToLower = {};
+
+      Object.getOwnPropertyNames(options.languages).forEach(function(name) {
+        languagesToLower[name.toLowerCase()] = options.languages[name];
+      });
+      this.languages_ = languagesToLower;
+    } else {
+      this.languages_ = Player.prototype.options_.languages;
+    }
+  }
+
+  pluginif(options) {
+    if (options.plugins) {
+      const plugins = options.plugins;
+
+      Object.keys(plugins).forEach(function(name) {
+        if (typeof this[name] === 'function') {
+          this[name](plugins[name]);
+        } else {
+          throw new Error(`plugin "${name}" does not exist`);
+        }
+      }, this);
+    }
   }
 
   /**
