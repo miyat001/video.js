@@ -36,7 +36,6 @@ import * as middleware from './tech/middleware.js';
 import {ALL as TRACK_TYPES} from './tracks/track-types';
 import filterSource from './utils/filter-source';
 import {findMimetype} from './utils/mimetypes';
-// import {IE_VERSION} from './utils/browser';
 
 // The following imports are used only to ensure that the corresponding modules
 // are always included in the video.js package. Importing the modules will
@@ -391,7 +390,7 @@ class Player extends Component {
     this.language(this.options_.language);
 
     // Update Supported Languages
-    this.languagetolowerif(options);
+    this.languageToLowerIf(options);
 
     // Cache for video property values.
     this.cache_ = {};
@@ -447,7 +446,7 @@ class Player extends Component {
 
     // Load plugins
 
-    this.pluginif(options);
+    this.pluginIf(options);
 
     this.options_.playerOptions = playerOptionsCopy;
 
@@ -518,7 +517,7 @@ class Player extends Component {
     this.playOnLoadstart_ = null;
   }
 
-  languagetolowerif(options) {
+  languageToLowerIf(options) {
     if (options.languages) {
       // Normalise player option languages to lowercase
       const languagesToLower = {};
@@ -532,7 +531,7 @@ class Player extends Component {
     }
   }
 
-  pluginif(options) {
+  pluginIf(options) {
     if (options.plugins) {
       const plugins = options.plugins;
 
