@@ -3,7 +3,7 @@
  */
 // Subclasses Component
 import Component from './component.js';
-import NewEl from './newEl.js';
+import El from './El.js';
 import UpdateStyle from './updateStyle.js';
 import ManualAutoplay from './manual-autoplay';
 
@@ -446,7 +446,7 @@ class Player extends Component {
 
     // Load plugins
 
-    this.pluginIf(options);
+    this.loadPlugins(options);
 
     this.options_.playerOptions = playerOptionsCopy;
 
@@ -531,7 +531,7 @@ class Player extends Component {
     }
   }
 
-  pluginIf(options) {
+  loadPlugins(options) {
     if (options.plugins) {
       const plugins = options.plugins;
 
@@ -607,7 +607,7 @@ class Player extends Component {
    *         The DOM element that gets created.
    */
   createEl() {
-    const newel = new NewEl();
+    const newel = new El();
 
     const tag = this.tag;
     let el;

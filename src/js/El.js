@@ -4,7 +4,7 @@ import * as Dom from './utils/dom.js';
 import * as stylesheet from './utils/stylesheet.js';
 import {IE_VERSION} from './utils/browser';
 
-class NewEl {
+class El {
 
   constructor() {
     // Do nothing;
@@ -143,4 +143,4 @@ class NewEl {
   }
 }
 
-export default NewEl;
+export default El;
