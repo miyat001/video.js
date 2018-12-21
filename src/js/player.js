@@ -3,7 +3,7 @@
  */
 // Subclasses Component
 import Component from './component.js';
-import El from './El.js';
+import ElCreator from './ElCreator.js';
 import UpdateStyle from './updateStyle.js';
 import ManualAutoplay from './manual-autoplay';
 
@@ -607,7 +607,7 @@ class Player extends Component {
    *         The DOM element that gets created.
    */
   createEl() {
-    const newel = new El();
+    const newel = new ElCreator();
 
     const tag = this.tag;
     let el;
