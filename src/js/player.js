@@ -3,6 +3,9 @@
  */
 // Subclasses Component
 import Component from './component.js';
+import ElCreator from './ElCreator.js';
+import UpdateStyle from './updateStyle.js';
+import ManualAutoplay from './manual-autoplay';
 
 import {version} from '../../package.json';
 import document from 'global/document';
@@ -19,7 +22,7 @@ import log, { createLogger } from './utils/log.js';
 import toTitleCase, { titleCaseEquals } from './utils/to-title-case.js';
 import { createTimeRange } from './utils/time-ranges.js';
 import { bufferedPercent } from './utils/buffer.js';
-import * as stylesheet from './utils/stylesheet.js';
+// import * as stylesheet from './utils/stylesheet.js';
 import FullscreenApi from './fullscreen-api.js';
 import MediaError from './media-error.js';
 import safeParseTuple from 'safe-json-parse/tuple';
@@ -33,7 +36,6 @@ import * as middleware from './tech/middleware.js';
 import {ALL as TRACK_TYPES} from './tracks/track-types';
 import filterSource from './utils/filter-source';
 import {findMimetype} from './utils/mimetypes';
-import {IE_VERSION} from './utils/browser';
 
 // The following imports are used only to ensure that the corresponding modules
 // are always included in the video.js package. Importing the modules will
@@ -388,17 +390,7 @@ class Player extends Component {
     this.language(this.options_.language);
 
     // Update Supported Languages
-    if (options.languages) {
-      // Normalise player option languages to lowercase
-      const languagesToLower = {};
-
-      Object.getOwnPropertyNames(options.languages).forEach(function(name) {
-        languagesToLower[name.toLowerCase()] = options.languages[name];
-      });
-      this.languages_ = languagesToLower;
-    } else {
-      this.languages_ = Player.prototype.options_.languages;
-    }
+    this.languageToLowerIf(options);
 
     // Cache for video property values.
     this.cache_ = {};
@@ -453,17 +445,8 @@ class Player extends Component {
     const playerOptionsCopy = mergeOptions(this.options_);
 
     // Load plugins
-    if (options.plugins) {
-      const plugins = options.plugins;
 
-      Object.keys(plugins).forEach(function(name) {
-        if (typeof this[name] === 'function') {
-          this[name](plugins[name]);
-        } else {
-          throw new Error(`plugin "${name}" does not exist`);
-        }
-      }, this);
-    }
+    this.loadPlugins(options);
 
     this.options_.playerOptions = playerOptionsCopy;
 
@@ -534,6 +517,34 @@ class Player extends Component {
     this.playOnLoadstart_ = null;
   }
 
+  languageToLowerIf(options) {
+    if (options.languages) {
+      // Normalise player option languages to lowercase
+      const languagesToLower = {};
+
+      Object.getOwnPropertyNames(options.languages).forEach(function(name) {
+        languagesToLower[name.toLowerCase()] = options.languages[name];
+      });
+      this.languages_ = languagesToLower;
+    } else {
+      this.languages_ = Player.prototype.options_.languages;
+    }
+  }
+
+  loadPlugins(options) {
+    if (options.plugins) {
+      const plugins = options.plugins;
+
+      Object.keys(plugins).forEach(function(name) {
+        if (typeof this[name] === 'function') {
+          this[name](plugins[name]);
+        } else {
+          throw new Error(`plugin "${name}" does not exist`);
+        }
+      }, this);
+    }
+  }
+
   /**
    * Destroys the video player and does any necessary cleanup.
    *
@@ -596,9 +607,11 @@ class Player extends Component {
    *         The DOM element that gets created.
    */
   createEl() {
-    let tag = this.tag;
+    const newel = new ElCreator();
+
+    const tag = this.tag;
     let el;
-    let playerElIngest = this.playerElIngest_ = tag.parentNode && tag.parentNode.hasAttribute && tag.parentNode.hasAttribute('data-vjs-player');
+    const playerElIngest = this.playerElIngest_ = tag.parentNode && tag.parentNode.hasAttribute && tag.parentNode.hasAttribute('data-vjs-player');
     const divEmbed = this.tag.tagName.toLowerCase() === 'video-js';
 
     if (playerElIngest) {
@@ -606,139 +619,9 @@ class Player extends Component {
     } else if (!divEmbed) {
       el = this.el_ = super.createEl('div');
     }
-
-    // Copy over all the attributes from the tag, including ID and class
-    // ID will now reference player box, not the video tag
     const attrs = Dom.getAttributes(tag);
 
-    if (divEmbed) {
-      el = this.el_ = tag;
-      tag = this.tag = document.createElement('video');
-      while (el.children.length) {
-        tag.appendChild(el.firstChild);
-      }
-
-      if (!Dom.hasClass(el, 'video-js')) {
-        Dom.addClass(el, 'video-js');
-      }
-
-      el.appendChild(tag);
-
-      playerElIngest = this.playerElIngest_ = el;
-      // move properties over from our custom `video-js` element
-      // to our new `video` element. This will move things like
-      // `src` or `controls` that were set via js before the player
-      // was initialized.
-      Object.keys(el).forEach((k) => {
-        tag[k] = el[k];
-      });
-    }
-
-    // set tabindex to -1 to remove the video element from the focus order
-    tag.setAttribute('tabindex', '-1');
-    attrs.tabindex = '-1';
-
-    // Workaround for #4583 (JAWS+IE doesn't announce BPB or play button)
-    // See https://github.com/FreedomScientific/VFO-standards-support/issues/78
-    // Note that we can't detect if JAWS is being used, but this ARIA attribute
-    //  doesn't change behavior of IE11 if JAWS is not being used
-    if (IE_VERSION) {
-      tag.setAttribute('role', 'application');
-      attrs.role = 'application';
-    }
-
-    // Remove width/height attrs from tag so CSS can make it 100% width/height
-    tag.removeAttribute('width');
-    tag.removeAttribute('height');
-
-    if ('width' in attrs) {
-      delete attrs.width;
-    }
-    if ('height' in attrs) {
-      delete attrs.height;
-    }
-
-    Object.getOwnPropertyNames(attrs).forEach(function(attr) {
-      // don't copy over the class attribute to the player element when we're in a div embed
-      // the class is already set up properly in the divEmbed case
-      // and we want to make sure that the `video-js` class doesn't get lost
-      if (!(divEmbed && attr === 'class')) {
-        el.setAttribute(attr, attrs[attr]);
-      }
-
-      if (divEmbed) {
-        tag.setAttribute(attr, attrs[attr]);
-      }
-    });
-
-    // Update tag id/class for use as HTML5 playback tech
-    // Might think we should do this after embedding in container so .vjs-tech class
-    // doesn't flash 100% width/height, but class only applies with .video-js parent
-    tag.playerId = tag.id;
-    tag.id += '_html5_api';
-    tag.className = 'vjs-tech';
-
-    // Make player findable on elements
-    tag.player = el.player = this;
-    // Default state of video is paused
-    this.addClass('vjs-paused');
-
-    // Add a style element in the player that we'll use to set the width/height
-    // of the player in a way that's still overrideable by CSS, just like the
-    // video element
-    if (window.VIDEOJS_NO_DYNAMIC_STYLE !== true) {
-      this.styleEl_ = stylesheet.createStyleElement('vjs-styles-dimensions');
-      const defaultsStyleEl = Dom.$('.vjs-styles-defaults');
-      const head = Dom.$('head');
-
-      head.insertBefore(this.styleEl_, defaultsStyleEl ? defaultsStyleEl.nextSibling : head.firstChild);
-    }
-
-    this.fill_ = false;
-    this.fluid_ = false;
-
-    // Pass in the width/height/aspectRatio options which will update the style el
-    this.width(this.options_.width);
-    this.height(this.options_.height);
-    this.fill(this.options_.fill);
-    this.fluid(this.options_.fluid);
-    this.aspectRatio(this.options_.aspectRatio);
-
-    // Hide any links within the video/audio tag,
-    // because IE doesn't hide them completely from screen readers.
-    const links = tag.getElementsByTagName('a');
-
-    for (let i = 0; i < links.length; i++) {
-      const linkEl = links.item(i);
-
-      Dom.addClass(linkEl, 'vjs-hidden');
-      linkEl.setAttribute('hidden', 'hidden');
-    }
-
-    // insertElFirst seems to cause the networkState to flicker from 3 to 2, so
-    // keep track of the original for later so we can know if the source originally failed
-    tag.initNetworkState_ = tag.networkState;
-
-    // Wrap video tag in div (el/box) container
-    if (tag.parentNode && !playerElIngest) {
-      tag.parentNode.insertBefore(el, tag);
-    }
-
-    // insert the tag as the first child of the player element
-    // then manually add it to the children array so that this.addChild
-    // will work properly for other components
-    //
-    // Breaks iPhone, fixed in HTML5 setup.
-    Dom.prependTo(tag, el);
-    this.children_.unshift(tag);
-
-    // Set lang attr on player to ensure CSS :lang() in consistent with player
-    // if it's been set to something different to the doc
-    this.el_.setAttribute('lang', this.language_);
-
-    this.el_ = el;
-
-    return el;
+    return newel.createEl(this, tag, el, playerElIngest, divEmbed, attrs);
   }
 
   /**
@@ -919,83 +802,9 @@ class Player extends Component {
    * @listens Tech#loadedmetadata
    */
   updateStyleEl_() {
-    if (window.VIDEOJS_NO_DYNAMIC_STYLE === true) {
-      const width = typeof this.width_ === 'number' ? this.width_ : this.options_.width;
-      const height = typeof this.height_ === 'number' ? this.height_ : this.options_.height;
-      const techEl = this.tech_ && this.tech_.el();
+    const updatestyleel = new UpdateStyle();
 
-      if (techEl) {
-        if (width >= 0) {
-          techEl.width = width;
-        }
-        if (height >= 0) {
-          techEl.height = height;
-        }
-      }
-
-      return;
-    }
-
-    let width;
-    let height;
-    let aspectRatio;
-    let idClass;
-
-    // The aspect ratio is either used directly or to calculate width and height.
-    if (this.aspectRatio_ !== undefined && this.aspectRatio_ !== 'auto') {
-      // Use any aspectRatio that's been specifically set
-      aspectRatio = this.aspectRatio_;
-    } else if (this.videoWidth() > 0) {
-      // Otherwise try to get the aspect ratio from the video metadata
-      aspectRatio = this.videoWidth() + ':' + this.videoHeight();
-    } else {
-      // Or use a default. The video element's is 2:1, but 16:9 is more common.
-      aspectRatio = '16:9';
-    }
-
-    // Get the ratio as a decimal we can use to calculate dimensions
-    const ratioParts = aspectRatio.split(':');
-    const ratioMultiplier = ratioParts[1] / ratioParts[0];
-
-    if (this.width_ !== undefined) {
-      // Use any width that's been specifically set
-      width = this.width_;
-    } else if (this.height_ !== undefined) {
-      // Or calulate the width from the aspect ratio if a height has been set
-      width = this.height_ / ratioMultiplier;
-    } else {
-      // Or use the video's metadata, or use the video el's default of 300
-      width = this.videoWidth() || 300;
-    }
-
-    if (this.height_ !== undefined) {
-      // Use any height that's been specifically set
-      height = this.height_;
-    } else {
-      // Otherwise calculate the height from the ratio and the width
-      height = width * ratioMultiplier;
-    }
-
-    // Ensure the CSS class is valid by starting with an alpha character
-    if ((/^[^a-zA-Z]/).test(this.id())) {
-      idClass = 'dimensions-' + this.id();
-    } else {
-      idClass = this.id() + '-dimensions';
-    }
-
-    // Ensure the right class is still on the player for the style element
-    this.addClass(idClass);
-
-    stylesheet.setTextContent(this.styleEl_, `
-      .${idClass} {
-        width: ${width}px;
-        height: ${height}px;
-      }
-
-      .${idClass}.vjs-fluid {
-        padding-top: ${ratioMultiplier * 100}%;
-      }
-    `);
+    updatestyleel.updateStyleEl(this);
   }
 
   /**
@@ -1323,52 +1132,10 @@ class Player extends Component {
    * found on the autoplay getter at Player#autoplay()
    */
   manualAutoplay_(type) {
-    if (!this.tech_ || typeof type !== 'string') {
-      return;
-    }
+    const manualautoplay = new ManualAutoplay();
 
-    const muted = () => {
-      const previouslyMuted = this.muted();
+    return manualautoplay.manualAutoplay(this, type);
 
-      this.muted(true);
-
-      const playPromise = this.play();
-
-      if (!playPromise || !playPromise.then || !playPromise.catch) {
-        return;
-      }
-
-      return playPromise.catch((e) => {
-        // restore old value of muted on failure
-        this.muted(previouslyMuted);
-      });
-    };
-
-    let promise;
-
-    if (type === 'any') {
-      promise = this.play();
-
-      if (promise && promise.then && promise.catch) {
-        promise.catch(() => {
-          return muted();
-        });
-      }
-    } else if (type === 'muted') {
-      promise = muted();
-    } else {
-      promise = this.play();
-    }
-
-    if (!promise || !promise.then || !promise.catch) {
-      return;
-    }
-
-    return promise.then(() => {
-      this.trigger({type: 'autoplay-success', autoplay: type});
-    }).catch((e) => {
-      this.trigger({type: 'autoplay-failure', autoplay: type});
-    });
   }
 
   /**
